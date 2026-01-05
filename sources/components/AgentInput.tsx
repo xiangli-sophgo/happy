@@ -64,6 +64,10 @@ interface AgentInputProps {
     isSendDisabled?: boolean;
     isSending?: boolean;
     minHeight?: number;
+    // Input history navigation
+    onHistoryUp?: (currentInput: string) => string | null;
+    onHistoryDown?: () => string | null;
+    onHistoryReset?: () => void;
 }
 
 const MAX_CONTEXT_SIZE = 190000;
@@ -429,6 +433,23 @@ export const AgentInput = React.memo(React.forwardRef<MultiTextInputHandle, Agen
             }
         }
 
+        // Handle input history navigation when no autocomplete suggestions
+        if (suggestions.length === 0) {
+            if (event.key === 'ArrowUp' && props.onHistoryUp) {
+                const historyValue = props.onHistoryUp(props.value);
+                if (historyValue !== null) {
+                    props.onChangeText(historyValue);
+                    return true;
+                }
+            } else if (event.key === 'ArrowDown' && props.onHistoryDown) {
+                const historyValue = props.onHistoryDown();
+                if (historyValue !== null) {
+                    props.onChangeText(historyValue);
+                    return true;
+                }
+            }
+        }
+
         // Handle Escape for abort when no suggestions are visible
         if (event.key === 'Escape' && props.showAbortButton && props.onAbort && !isAborting) {
             handleAbortPress();
@@ -457,7 +478,7 @@ export const AgentInput = React.memo(React.forwardRef<MultiTextInputHandle, Agen
 
         }
         return false; // Key was not handled
-    }, [props.value, props.onSend, props.permissionMode, props.onPermissionModeChange, suggestions, selected, handleSuggestionSelect, moveUp, moveDown, props.showAbortButton, props.onAbort, isAborting, handleAbortPress]);
+    }, [props.value, props.onSend, props.onChangeText, props.permissionMode, props.onPermissionModeChange, suggestions, selected, handleSuggestionSelect, moveUp, moveDown, props.showAbortButton, props.onAbort, isAborting, handleAbortPress, props.onHistoryUp, props.onHistoryDown]);
 
 
 

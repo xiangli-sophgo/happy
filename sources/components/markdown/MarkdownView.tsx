@@ -2,7 +2,7 @@ import { MarkdownSpan, parseMarkdown } from './parseMarkdown';
 import { Link } from 'expo-router';
 import * as React from 'react';
 import { Pressable, ScrollView, View, Platform } from 'react-native';
-import { Gesture, GestureDetector } from 'react-native-gesture-handler';
+import { Gesture, GestureDetector, Pressable as GHPressable } from 'react-native-gesture-handler';
 import { StyleSheet } from 'react-native-unistyles';
 import { Text } from '../StyledText';
 import { Typography } from '@/constants/Typography';
@@ -189,9 +189,11 @@ function RenderOptionsBlock(props: {
         <View style={[style.optionsContainer, props.first && style.first, props.last && style.last]}>
             {props.items.map((item, index) => {
                 if (props.onOptionPress) {
+                    // Use GHPressable on iOS/Android to work with GestureDetector, regular Pressable on Web
+                    const OptionPressable = Platform.OS === 'web' ? Pressable : GHPressable;
                     return (
-                        <Pressable 
-                            key={index} 
+                        <OptionPressable
+                            key={index}
                             style={({ pressed }) => [
                                 style.optionItem,
                                 pressed && style.optionItemPressed
@@ -199,7 +201,7 @@ function RenderOptionsBlock(props: {
                             onPress={() => props.onOptionPress?.({ title: item })}
                         >
                             <Text selectable={props.selectable} style={style.optionText}>{item}</Text>
-                        </Pressable>
+                        </OptionPressable>
                     );
                 } else {
                     return (

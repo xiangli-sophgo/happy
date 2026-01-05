@@ -16,6 +16,8 @@ export const MessageView = (props: {
   metadata: Metadata | null;
   sessionId: string;
   getMessageById?: (id: string) => Message | null;
+  isLastMessage?: boolean;
+  onFillInput?: (text: string) => void;
 }) => {
   return (
     <View style={styles.messageContainer} renderToHardwareTextureAndroid={true}>
@@ -25,6 +27,8 @@ export const MessageView = (props: {
           metadata={props.metadata}
           sessionId={props.sessionId}
           getMessageById={props.getMessageById}
+          isLastMessage={props.isLastMessage}
+          onFillInput={props.onFillInput}
         />
       </View>
     </View>
@@ -37,13 +41,15 @@ function RenderBlock(props: {
   metadata: Metadata | null;
   sessionId: string;
   getMessageById?: (id: string) => Message | null;
+  isLastMessage?: boolean;
+  onFillInput?: (text: string) => void;
 }): React.ReactElement {
   switch (props.message.kind) {
     case 'user-text':
-      return <UserTextBlock message={props.message} sessionId={props.sessionId} />;
+      return <UserTextBlock message={props.message} sessionId={props.sessionId} isLastMessage={props.isLastMessage} onFillInput={props.onFillInput} />;
 
     case 'agent-text':
-      return <AgentTextBlock message={props.message} sessionId={props.sessionId} />;
+      return <AgentTextBlock message={props.message} sessionId={props.sessionId} isLastMessage={props.isLastMessage} onFillInput={props.onFillInput} />;
 
     case 'tool-call':
       return <ToolCallBlock
@@ -64,18 +70,33 @@ function RenderBlock(props: {
   }
 }
 
+// Keywords that indicate the option requires user input instead of direct sending
+const CUSTOM_INPUT_KEYWORDS = ['自定义', '其他', '请描述', '请输入', 'custom', 'other'];
+
+function isCustomInputOption(text: string): boolean {
+  const lowerText = text.toLowerCase();
+  return CUSTOM_INPUT_KEYWORDS.some(keyword => lowerText.includes(keyword.toLowerCase()));
+}
+
 function UserTextBlock(props: {
   message: UserTextMessage;
   sessionId: string;
+  isLastMessage?: boolean;
+  onFillInput?: (text: string) => void;
 }) {
   const handleOptionPress = React.useCallback((option: Option) => {
-    sync.sendMessage(props.sessionId, option.title);
-  }, [props.sessionId]);
+    if (isCustomInputOption(option.title) && props.onFillInput) {
+      // Fill input box instead of sending for custom input options
+      props.onFillInput('');
+    } else {
+      sync.sendMessage(props.sessionId, option.title);
+    }
+  }, [props.sessionId, props.onFillInput]);
 
   return (
     <View style={styles.userMessageContainer}>
       <View style={styles.userMessageBubble}>
-        <MarkdownView markdown={props.message.displayText || props.message.text} onOptionPress={handleOptionPress} />
+        <MarkdownView markdown={props.message.displayText || props.message.text} onOptionPress={props.isLastMessage ? handleOptionPress : undefined} />
         {/* {__DEV__ && (
           <Text style={styles.debugText}>{JSON.stringify(props.message.meta)}</Text>
         )} */}
@@ -87,14 +108,21 @@ function UserTextBlock(props: {
 function AgentTextBlock(props: {
   message: AgentTextMessage;
   sessionId: string;
+  isLastMessage?: boolean;
+  onFillInput?: (text: string) => void;
 }) {
   const handleOptionPress = React.useCallback((option: Option) => {
-    sync.sendMessage(props.sessionId, option.title);
-  }, [props.sessionId]);
+    if (isCustomInputOption(option.title) && props.onFillInput) {
+      // Fill input box instead of sending for custom input options
+      props.onFillInput('');
+    } else {
+      sync.sendMessage(props.sessionId, option.title);
+    }
+  }, [props.sessionId, props.onFillInput]);
 
   return (
     <View style={styles.agentMessageContainer}>
-      <MarkdownView markdown={props.message.text} onOptionPress={handleOptionPress} />
+      <MarkdownView markdown={props.message.text} onOptionPress={props.isLastMessage ? handleOptionPress : undefined} />
     </View>
   );
 }

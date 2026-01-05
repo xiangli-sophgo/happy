@@ -7,6 +7,7 @@ import { Deferred } from '@/components/Deferred';
 import { EmptyMessages } from '@/components/EmptyMessages';
 import { VoiceAssistantStatusBar } from '@/components/VoiceAssistantStatusBar';
 import { useDraft } from '@/hooks/useDraft';
+import { useInputHistory } from '@/hooks/useInputHistory';
 import { Modal } from '@/modal';
 import { voiceHooks } from '@/realtime/hooks/voiceHooks';
 import { startRealtimeSession, stopRealtimeSession } from '@/realtime/RealtimeSession';
@@ -176,6 +177,9 @@ function SessionViewLoaded({ sessionId, session }: { sessionId: string, session:
     // Use draft hook for auto-saving message drafts
     const { clearDraft } = useDraft(sessionId, message, setMessage);
 
+    // Use input history hook for up/down arrow navigation
+    const { addToHistory, navigateUp, navigateDown, resetNavigation } = useInputHistory(sessionId);
+
     // Handle dismissing CLI version warning
     const handleDismissCliWarning = React.useCallback(() => {
         if (machineId && cliVersion) {
@@ -249,7 +253,7 @@ function SessionViewLoaded({ sessionId, session }: { sessionId: string, session:
         <>
             <Deferred>
                 {messages.length > 0 && (
-                    <ChatList session={session} />
+                    <ChatList session={session} onFillInput={setMessage} />
                 )}
             </Deferred>
         </>
@@ -268,7 +272,10 @@ function SessionViewLoaded({ sessionId, session }: { sessionId: string, session:
         <AgentInput
             placeholder={t('session.inputPlaceholder')}
             value={message}
-            onChangeText={setMessage}
+            onChangeText={(text) => {
+                setMessage(text);
+                resetNavigation();
+            }}
             sessionId={sessionId}
             permissionMode={permissionMode}
             onPermissionModeChange={updatePermissionMode}
@@ -281,6 +288,7 @@ function SessionViewLoaded({ sessionId, session }: { sessionId: string, session:
             }}
             onSend={() => {
                 if (message.trim()) {
+                    addToHistory(message);
                     setMessage('');
                     clearDraft();
                     sync.sendMessage(sessionId, message);
@@ -309,6 +317,9 @@ function SessionViewLoaded({ sessionId, session }: { sessionId: string, session:
                 contextSize: session.latestUsage.contextSize
             } : undefined}
             alwaysShowContextSize={alwaysShowContextSize}
+            onHistoryUp={navigateUp}
+            onHistoryDown={navigateDown}
+            onHistoryReset={resetNavigation}
         />
     );
 
